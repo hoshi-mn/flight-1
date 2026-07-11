@@ -127,10 +127,9 @@ def radar_screen():
         r = pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip)
         st.pydeck_chart(r)
         
-        # 버튼을 누르면 캐시를 지우고 새로고침
+        # 버튼을 누르면 데이터를 지워서 새로 가져오도록 유도! (st.rerun은 충돌나므로 삭제)
         if st.button("🔄 즉시 새로고침", key="refresh_btn"):
-            st.cache_data.clear()
-            st.rerun(scope="fragment")
+            load_data.clear()
 
         st.subheader("📋 상세 비행기 데이터")
         st.dataframe(flight_data)
@@ -138,8 +137,7 @@ def radar_screen():
     else:
         st.error("데이터를 가져오지 못했습니다.")
         if st.button("🔄 다시 시도", key="retry_btn"):
-            st.cache_data.clear()
-            st.rerun(scope="fragment")
+            load_data.clear()
 
 # 앱 실행!
 radar_screen()
