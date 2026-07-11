@@ -47,7 +47,7 @@ def get_mock_data():
     ]
     return pd.DataFrame(mock_flights)
 
-@st.cache_data(ttl=1, show_spinner=False)
+# 에러의 원인이었던 @st.cache_data 삭제! 실시간 데이터는 어차피 계속 바뀌므로 저장할 필요가 없어!
 def load_data():
     url = "https://opensky-network.org/api/states/all"
     params = {
@@ -127,17 +127,15 @@ def radar_screen():
         r = pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip)
         st.pydeck_chart(r)
         
-        # 버튼을 누르면 데이터를 지워서 새로 가져오도록 유도! (st.rerun은 충돌나므로 삭제)
-        if st.button("🔄 즉시 새로고침", key="refresh_btn"):
-            load_data.clear()
+        # 버튼을 누르면 fragment가 알아서 새로고침 되므로 복잡한 명령어(clear) 삭제!
+        st.button("🔄 즉시 새로고침", key="refresh_btn")
 
         st.subheader("📋 상세 비행기 데이터")
         st.dataframe(flight_data)
         
     else:
         st.error("데이터를 가져오지 못했습니다.")
-        if st.button("🔄 다시 시도", key="retry_btn"):
-            load_data.clear()
+        st.button("🔄 다시 시도", key="retry_btn")
 
 # 앱 실행!
 radar_screen()
