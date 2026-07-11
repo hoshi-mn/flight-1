@@ -28,7 +28,7 @@ def get_access_token():
         response = requests.post(
             token_url, 
             data={"grant_type": "client_credentials", "client_id": OPENSKY_CLIENT_ID, "client_secret": OPENSKY_CLIENT_SECRET},
-            timeout=10 
+            timeout=3 # 💡 기존 10초에서 3초로 단축! (서버 기절 방지)
         )
         if response.status_code == 200:
             token = response.json().get("access_token")
@@ -60,7 +60,7 @@ def load_data():
         return get_mock_data(), token_err
         
     try:
-        response = requests.get(url, params=params, headers=headers, timeout=15)
+        response = requests.get(url, params=params, headers=headers, timeout=3) # 💡 기존 15초에서 3초로 단축! (서버 기절 방지)
         if response.status_code == 200:
             data = response.json()
             states = data.get('states')
