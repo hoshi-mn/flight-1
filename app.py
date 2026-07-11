@@ -4,6 +4,7 @@ import pydeck as pdk
 import requests
 import random
 import time
+import gc  # 메모리 청소기를 위한 라이브러리 추가!
 
 st.set_page_config(page_title="실시간 비행기 레이더", page_icon="✈️", layout="wide")
 
@@ -58,7 +59,7 @@ def load_data():
         return get_mock_data(), token_err
         
     try:
-        response = requests.get(url, params=params, headers=headers, timeout=3) # 💡 여기도 3초 타임아웃!
+        response = requests.get(url, params=params, headers=headers, timeout=3)
         if response.status_code == 200:
             data = response.json()
             states = data.get('states')
@@ -76,6 +77,11 @@ def load_data():
                 # 🛡️ NaN(빈 데이터) 완벽 방어 시스템
                 df_clean = df_clean.dropna(subset=['longitude', 'latitude'])
                 df_clean['baro_altitude'] = df_clean['baro_altitude'].fillna(0)
+                
+                # 💡 국가 이름이 빈칸일 때 "Unknown"으로 채워서 PyDeck 에러 방지
+                df_clean['origin_country'] = df_clean['origin_country'].fillna("Unknown")
+                
+                # 방향(각도)이 빈칸일 때 랜덤 각도 부여
                 df_clean['true_track'] = df_clean['true_track'].apply(lambda x: random.randint(0, 360) if pd.isna(x) else x)
                 
                 # 💡 이름이 없는 비행기는 "UNKNOWN"으로 채워서 PyDeck 에러 방지
@@ -92,13 +98,12 @@ def load_data():
 
 def radar_screen():
     
-    # 💡 브라우저 메모리 폭발을 막기 위한 '수동 새로고침 버튼'
     col1, col2 = st.columns([4, 1])
     with col1:
         st.write("🚀 **레이더 업데이트:** 오른쪽 버튼을 눌러 최신 비행기 위치를 확인하세요.")
     with col2:
         if st.button("🔄 레이더 갱신", use_container_width=True):
-            pass # 스트림릿은 버튼을 누르는 순간 알아서 새로고침 됩니다!
+            pass
 
     loading_text = st.empty()
     loading_text.caption("🔄 하늘에서 비행기 정보를 가져오는 중...")
@@ -154,5 +159,8 @@ def radar_screen():
         
     else:
         st.error("데이터를 화면에 그릴 수 없습니다.")
+
+    # 🧹 메모리 누수 방지: 다 쓴 메모리를 청소하여 503 에러 예방
+    gc.collect()
 
 radar_screen()
