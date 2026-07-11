@@ -1,2 +1,2 @@
 # flight-1
-showing flight
+This program wass made **to show flights.**
