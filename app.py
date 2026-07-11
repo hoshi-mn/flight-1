@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import pydeck as pdk
 import requests
-import time
 
 # 1. 스트림릿 웹앱 기본 설정
 st.set_page_config(page_title="실시간 비행기 레이더", page_icon="✈️", layout="wide")
@@ -37,18 +36,18 @@ def get_access_token():
     except Exception as e:
         return None, f"토큰 발급 통신 에러: {e}"
 
-# 🌟 [새로 추가된 기능] 가짜 시연용 데이터를 만드는 함수
+# 가짜 시연용 데이터를 만드는 함수
 def get_mock_data():
     mock_flights = [
-        {"callsign": "KOR123", "longitude": 126.9780, "latitude": 37.5665, "baro_altitude": 5000, "origin_country": "South Korea"}, # 서울
-        {"callsign": "ASIANA45", "longitude": 129.0756, "latitude": 35.1795, "baro_altitude": 8000, "origin_country": "South Korea"}, # 부산
-        {"callsign": "JEJU77", "longitude": 126.5219, "latitude": 33.4996, "baro_altitude": 3000, "origin_country": "South Korea"}, # 제주
-        {"callsign": "JAPAN88", "longitude": 130.0, "latitude": 36.5, "baro_altitude": 10000, "origin_country": "Japan"}, # 동해 상공
-        {"callsign": "USA99", "longitude": 125.0, "latitude": 36.0, "baro_altitude": 12000, "origin_country": "United States"} # 서해 상공
+        {"callsign": "KOR123", "longitude": 126.9780, "latitude": 37.5665, "baro_altitude": 5000, "origin_country": "South Korea"},
+        {"callsign": "ASIANA45", "longitude": 129.0756, "latitude": 35.1795, "baro_altitude": 8000, "origin_country": "South Korea"},
+        {"callsign": "JEJU77", "longitude": 126.5219, "latitude": 33.4996, "baro_altitude": 3000, "origin_country": "South Korea"},
+        {"callsign": "JAPAN88", "longitude": 130.0, "latitude": 36.5, "baro_altitude": 10000, "origin_country": "Japan"},
+        {"callsign": "USA99", "longitude": 125.0, "latitude": 36.0, "baro_altitude": 12000, "origin_country": "United States"}
     ]
     return pd.DataFrame(mock_flights)
 
-@st.cache_data(ttl=1)
+@st.cache_data(ttl=1, show_spinner=False)
 def load_data():
     url = "https://opensky-network.org/api/states/all"
     params = {
@@ -61,7 +60,6 @@ def load_data():
     if token:
         headers["Authorization"] = f"Bearer {token}"
     else:
-        # 토큰 발급부터 막혔다면 시연용 데이터 반환!
         return get_mock_data(), token_err
         
     try:
@@ -86,32 +84,23 @@ def load_data():
         else:
             return get_mock_data(), f"서버 거절 (상태 코드: {response.status_code})"
     except Exception as e:
-        # 통신이 차단(Timeout)되면 시연용 데이터를 반환!
         return get_mock_data(), f"통신 차단 또는 시간 초과: {e}"
 
-col1, col2 = st.columns([3, 1])
-with col1:
-    st.write("🚀 **자동 업데이트 모드**가 켜져 있으면 15초마다 조용히 최신 데이터를 가져옵니다.")
-    st.info("💡 **지도 조작 꿀팁:** `Shift` 키를 누른 상태로 **왼쪽 마우스**를 드래그하면 지도를 회전/기울일 수 있습니다!")
-with col2:
-    auto_refresh = st.toggle("자동 업데이트", value=True)
+st.info("💡 **지도 조작 꿀팁:** `Shift` 키를 누른 상태로 **왼쪽 마우스**를 드래그하면 우클릭 메뉴 없이 지도를 회전/기울일 수 있습니다!")
+st.write("🚀 **자동 업데이트:** 15초마다 자동으로 지도가 새로고침 됩니다.")
 
-@st.fragment
-def radar_screen(is_auto):
-    # 화면 가림(하얘짐)을 방지하기 위해 커다란 spinner 대신 작고 조용한 텍스트 사용
+# 핵심 마법: 15초마다 서버에 무리를 주지 않고 이 구역만 자동으로 새로고침!
+@st.fragment(run_every="15s")
+def radar_screen():
     loading_text = st.empty()
     loading_text.caption("🔄 하늘에서 비행기 정보를 가져오는 중...")
     
     flight_data, error_msg = load_data()
-    
-    # 가져오기 완료되면 로딩 글씨 지우기
     loading_text.empty() 
 
-    # 에러 메시지가 있다면 (서버가 막혔다면) 경고창 띄우기
     if error_msg:
-        st.error("🚨 실시간 데이터를 받아오지 못했습니다.")
-        st.warning("💡 대신 예시(가짜) 데이터를 띄웠습니다! 기능이 어떻게 작동하는지 테스트해 보세요.")
-        # 너무 긴 에러 메시지는 깔끔한 화면을 위해 숨겨두었어!
+        st.error("🚨 실시간 데이터를 받아오지 못했습니다. (서버 통신 차단)")
+        st.warning("💡 대신 [시연용 예시 데이터]를 띄웠습니다! 기능이 어떻게 작동하는지 테스트해 보세요.")
 
     if not flight_data.empty:
         if not error_msg:
@@ -138,29 +127,19 @@ def radar_screen(is_auto):
         r = pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip)
         st.pydeck_chart(r)
         
-        # 수동 새로고침 버튼을 지도 바로 아래에 배치 (이 버튼을 눌러도 깜빡이지 않아!)
-        if st.button("🔄 실시간 데이터 새로고침", key="refresh_btn"):
+        # 버튼을 누르면 캐시를 지우고 새로고침
+        if st.button("🔄 즉시 새로고침", key="refresh_btn"):
             st.cache_data.clear()
-            st.rerun()
+            st.rerun(scope="fragment")
 
         st.subheader("📋 상세 비행기 데이터")
         st.dataframe(flight_data)
-        
-        # Fragment 내부의 rerun은 웹페이지 전체를 깜빡이게 하지 않고 이 구역만 새로고침 해줘!
-        if is_auto:
-            time.sleep(15)
-            st.cache_data.clear()
-            st.rerun()
         
     else:
         st.error("데이터를 가져오지 못했습니다.")
         if st.button("🔄 다시 시도", key="retry_btn"):
             st.cache_data.clear()
-            st.rerun()
-        if is_auto:
-            time.sleep(5)
-            st.cache_data.clear()
-            st.rerun()
+            st.rerun(scope="fragment")
 
-# 위에서 만든 뼈대(Fragment)를 화면에 실행!
-radar_screen(auto_refresh)
+# 앱 실행!
+radar_screen()
