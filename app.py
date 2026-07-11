@@ -8,9 +8,7 @@ import time
 st.set_page_config(page_title="실시간 비행기 레이더", page_icon="✈️", layout="wide")
 
 st.title("✈️ 한반도 실시간 비행기 레이더")
-st.write("현재 한반도 상공을 날아다니는 비행기들을 실시간으로 보여줍니다.")
 st.info("💡 **지도 조작 꿀팁:** `Shift` 키를 누른 상태로 **왼쪽 마우스**를 드래그하면 지도를 회전/기울일 수 있습니다!")
-st.write("🚀 **자동 업데이트:** 30초마다 자동으로 지도가 새로고침 됩니다.") 
 
 def get_access_token():
     if 'opensky_token' in st.session_state and 'token_expiry' in st.session_state:
@@ -28,7 +26,7 @@ def get_access_token():
         response = requests.post(
             token_url, 
             data={"grant_type": "client_credentials", "client_id": OPENSKY_CLIENT_ID, "client_secret": OPENSKY_CLIENT_SECRET},
-            timeout=3 # 💡 기존 10초에서 3초로 단축! (서버 기절 방지)
+            timeout=3 # 💡 3초 만에 끊어서 서버 기절 방지!
         )
         if response.status_code == 200:
             token = response.json().get("access_token")
@@ -60,7 +58,7 @@ def load_data():
         return get_mock_data(), token_err
         
     try:
-        response = requests.get(url, params=params, headers=headers, timeout=3) # 💡 기존 15초에서 3초로 단축! (서버 기절 방지)
+        response = requests.get(url, params=params, headers=headers, timeout=3) # 💡 여기도 3초 타임아웃!
         if response.status_code == 200:
             data = response.json()
             states = data.get('states')
@@ -74,11 +72,13 @@ def load_data():
                 ]
                 df = pd.DataFrame(states, columns=columns)
                 df_clean = df[['callsign', 'longitude', 'latitude', 'baro_altitude', 'origin_country', 'true_track']]
+                
+                # 🛡️ NaN(빈 데이터) 완벽 방어 시스템
                 df_clean = df_clean.dropna(subset=['longitude', 'latitude'])
                 df_clean['baro_altitude'] = df_clean['baro_altitude'].fillna(0)
                 df_clean['true_track'] = df_clean['true_track'].apply(lambda x: random.randint(0, 360) if pd.isna(x) else x)
                 
-                # 💡 추가된 방어막: 비행기 이름표(callsign)가 비어있을 경우 서버 기절 방지!
+                # 💡 이름이 없는 비행기는 "UNKNOWN"으로 채워서 PyDeck 에러 방지
                 df_clean['callsign'] = df_clean['callsign'].fillna("UNKNOWN")
                 df_clean['callsign'] = df_clean['callsign'].apply(lambda x: str(x).strip() if str(x).strip() else "UNKNOWN")
 
@@ -90,8 +90,16 @@ def load_data():
     except Exception as e:
         return get_mock_data(), f"통신 초과: {e}"
 
-@st.fragment(run_every="30s")
 def radar_screen():
+    
+    # 💡 브라우저 메모리 폭발을 막기 위한 '수동 새로고침 버튼'
+    col1, col2 = st.columns([4, 1])
+    with col1:
+        st.write("🚀 **레이더 업데이트:** 오른쪽 버튼을 눌러 최신 비행기 위치를 확인하세요.")
+    with col2:
+        if st.button("🔄 레이더 갱신", use_container_width=True):
+            pass # 스트림릿은 버튼을 누르는 순간 알아서 새로고침 됩니다!
+
     loading_text = st.empty()
     loading_text.caption("🔄 하늘에서 비행기 정보를 가져오는 중...")
     
@@ -112,9 +120,7 @@ def radar_screen():
         if not error_msg:
             st.success(f"성공! 현재 {len(flight_data)}대의 비행기를 추적 중입니다.")
         
-        # 💡 PyDeck 렌더링 수정: 투명해지는 특수문자 대신 관제탑 UI 적용!
-        
-        # 1. 비행기 위치를 그리는 빨간색 점 (절대 투명해지지 않음)
+        # 1. 비행기 위치를 그리는 빨간색 점
         layer_dot = pdk.Layer(
             "ScatterplotLayer",
             data=flight_data,
@@ -124,7 +130,7 @@ def radar_screen():
             pickable=True,
         )
         
-        # 2. 비행기 이름표(Callsign) 띄우기 (영어라 100% 렌더링 됨)
+        # 2. 비행기 이름표(Callsign) 띄우기
         layer_text = pdk.Layer(
             "TextLayer",
             data=flight_data,
@@ -132,7 +138,7 @@ def radar_screen():
             get_text="callsign", 
             get_size=15,            
             get_color="[255, 255, 255]",
-            get_pixel_offset="[0, -20]", # 점 위로 살짝 올리기
+            get_pixel_offset="[0, -20]", 
             pickable=False,
         )
         
