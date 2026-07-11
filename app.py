@@ -16,8 +16,9 @@ def get_access_token():
     
     # [보안 업데이트] 코드에 직접 적지 않고 st.secrets에서 불러오기!
     try:
-        client_id = st.secrets["OPENSKY_CLIENT_ID"]
-        client_secret = st.secrets["OPENSKY_CLIENT_SECRET"]
+        # 변수 이름도 통일감 있게 OPENSKY_CLIENT_ID / SECRET 으로 변경!
+        OPENSKY_CLIENT_ID = st.secrets["OPENSKY_CLIENT_ID"]
+        OPENSKY_CLIENT_SECRET = st.secrets["OPENSKY_CLIENT_SECRET"]
     except KeyError:
         return None, "보안 키(Secrets)가 설정되지 않았습니다. Streamlit Cloud 설정을 확인해주세요."
 
@@ -26,8 +27,8 @@ def get_access_token():
             token_url, 
             data={
                 "grant_type": "client_credentials",
-                "client_id": client_id,
-                "client_secret": client_secret
+                "client_id": OPENSKY_CLIENT_ID,       # 이름표(왼쪽)는 서버 규칙, 값(오른쪽)은 변경된 변수 사용
+                "client_secret": OPENSKY_CLIENT_SECRET
             },
             timeout=10 
         )
