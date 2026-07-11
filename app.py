@@ -98,8 +98,15 @@ def radar_screen():
     loading_text.empty() 
 
     if error_msg:
-        st.error(f"🚨 실시간 데이터 연결 실패: {error_msg}")
-        st.warning("💡 대신 [시연용 예시 데이터]를 띄웠습니다! 방향 지시 아이콘이 어떻게 작동하는지 확인해 보세요.")
+        # 💡 수정: 타임아웃 방화벽 에러를 부드러운 '시연 모드' 안내로 변경!
+        if "timeout" in error_msg.lower() or "통신 에러" in error_msg or "통신 초과" in error_msg:
+            st.warning("☁️ **클라우드 환경 감지:** OpenSky 보안 정책으로 인해 클라우드 서버에서의 접속이 차단되었습니다.")
+            st.info("💡 **시연 모드(Demo) 작동 중:** 앱이 멈추지 않도록 [예시 데이터]를 띄웠습니다! 지도 회전 및 비행기 방향 등 모든 기능은 정상 작동합니다.")
+            with st.expander("🛠️ 개발자용 에러 로그 확인"):
+                st.code(error_msg)
+        else:
+            st.error(f"🚨 실시간 데이터 연결 실패: {error_msg}")
+            st.warning("💡 대신 [시연용 예시 데이터]를 띄웠습니다!")
 
     if not flight_data.empty:
         if not error_msg:
