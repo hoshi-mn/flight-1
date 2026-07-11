@@ -46,7 +46,7 @@ def get_mock_data():
         {"callsign": "JAPAN88", "longitude": 130.0, "latitude": 36.5, "baro_altitude": 10000, "origin_country": "Japan"},
         {"callsign": "USA99", "longitude": 125.0, "latitude": 36.0, "baro_altitude": 12000, "origin_country": "United States"}
     ]
-        return pd.DataFrame(mock_flights)
+    return pd.DataFrame(mock_flights)
 
 # 에러의 원인이었던 @st.cache_data 삭제! 실시간 데이터는 어차피 계속 바뀌므로 저장할 필요가 없어!
 def load_data():
