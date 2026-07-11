@@ -9,6 +9,8 @@ st.set_page_config(page_title="실시간 비행기 레이더", page_icon="✈️
 st.title("✈️ 한반도 실시간 비행기 레이더")
 st.write("현재 한반도 상공을 날아다니는 비행기들을 실시간으로 보여줍니다.")
 
+# 💡 수정 포인트 1: 발급받은 출입증(토큰)을 30분(1800초) 동안 기억하기! (매번 로그인하지 않음)
+@st.cache_data(ttl=1800) 
 def get_access_token():
     token_url = "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token"
     
@@ -44,7 +46,7 @@ def get_mock_data():
         {"callsign": "JAPAN88", "longitude": 130.0, "latitude": 36.5, "baro_altitude": 10000, "origin_country": "Japan"},
         {"callsign": "USA99", "longitude": 125.0, "latitude": 36.0, "baro_altitude": 12000, "origin_country": "United States"}
     ]
-    return pd.DataFrame(mock_flights)
+        return pd.DataFrame(mock_flights)
 
 # 에러의 원인이었던 @st.cache_data 삭제! 실시간 데이터는 어차피 계속 바뀌므로 저장할 필요가 없어!
 def load_data():
@@ -86,10 +88,11 @@ def load_data():
         return get_mock_data(), f"통신 차단 또는 시간 초과: {e}"
 
 st.info("💡 **지도 조작 꿀팁:** `Shift` 키를 누른 상태로 **왼쪽 마우스**를 드래그하면 우클릭 메뉴 없이 지도를 회전/기울일 수 있습니다!")
-st.write("🚀 **자동 업데이트:** 15초마다 자동으로 지도가 새로고침 됩니다.")
+# 💡 수정 포인트 2: 새로고침 주기를 15초에서 30초로 변경 (서버 과부하 방지)
+st.write("🚀 **자동 업데이트:** 30초마다 자동으로 지도가 새로고침 됩니다.") 
 
-# 핵심 마법: 15초마다 서버에 무리를 주지 않고 이 구역만 자동으로 새로고침!
-@st.fragment(run_every="15s")
+# 핵심 마법: 30초마다 서버에 무리를 주지 않고 이 구역만 자동으로 새로고침!
+@st.fragment(run_every="30s")
 def radar_screen():
     loading_text = st.empty()
     loading_text.caption("🔄 하늘에서 비행기 정보를 가져오는 중...")
