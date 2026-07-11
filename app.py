@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import pydeck as pdk
 import requests
+import random
 
 st.set_page_config(page_title="실시간 비행기 레이더", page_icon="✈️", layout="wide")
 
@@ -69,9 +70,9 @@ def load_data():
                 df_clean = df[['callsign', 'longitude', 'latitude', 'baro_altitude', 'origin_country', 'true_track']]
                 df_clean = df_clean.dropna(subset=['longitude', 'latitude'])
                 
-                # 🛡️ 💡 수정 2 (앱 기절 방어 코드): 고도나 방향 데이터가 비어있으면(NaN) 0으로 채워 넣습니다! 
-                df_clean['true_track'] = df_clean['true_track'].fillna(0)
+                # 🛡️ 💡 수정 2: 고도는 0으로 채우고, 방향이 없는 경우 0~360도 사이의 랜덤 방향으로 채웁니다! (네 아이디어 반영!)
                 df_clean['baro_altitude'] = df_clean['baro_altitude'].fillna(0)
+                df_clean['true_track'] = df_clean['true_track'].apply(lambda x: random.randint(0, 360) if pd.isna(x) else x)
                 
                 return df_clean, None
             else:
