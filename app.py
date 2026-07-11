@@ -77,6 +77,11 @@ def load_data():
                 df_clean = df_clean.dropna(subset=['longitude', 'latitude'])
                 df_clean['baro_altitude'] = df_clean['baro_altitude'].fillna(0)
                 df_clean['true_track'] = df_clean['true_track'].apply(lambda x: random.randint(0, 360) if pd.isna(x) else x)
+                
+                # 💡 추가된 방어막: 비행기 이름표(callsign)가 비어있을 경우 서버 기절 방지!
+                df_clean['callsign'] = df_clean['callsign'].fillna("UNKNOWN")
+                df_clean['callsign'] = df_clean['callsign'].apply(lambda x: str(x).strip() if str(x).strip() else "UNKNOWN")
+
                 return df_clean, None
             else:
                 return get_mock_data(), "현재 한반도 상공에 잡히는 비행기가 없거나 서버가 데이터를 주지 않았습니다."
