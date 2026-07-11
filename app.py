@@ -91,60 +91,76 @@ def load_data():
 
 col1, col2 = st.columns([3, 1])
 with col1:
-    st.write("🚀 **자동 업데이트 모드**가 켜져 있으면, 연결될 때까지 끈기 있게 계속 시도합니다!")
+    st.write("🚀 **자동 업데이트 모드**가 켜져 있으면 15초마다 조용히 최신 데이터를 가져옵니다.")
+    st.info("💡 **지도 조작 꿀팁:** `Shift` 키를 누른 상태로 **왼쪽 마우스**를 드래그하면 지도를 회전/기울일 수 있습니다!")
 with col2:
     auto_refresh = st.toggle("자동 업데이트", value=True)
 
-with st.spinner("하늘에서 비행기 정보를 가져오는 중..."):
+@st.fragment
+def radar_screen(is_auto):
+    # 화면 가림(하얘짐)을 방지하기 위해 커다란 spinner 대신 작고 조용한 텍스트 사용
+    loading_text = st.empty()
+    loading_text.caption("🔄 하늘에서 비행기 정보를 가져오는 중...")
+    
     flight_data, error_msg = load_data()
+    
+    # 가져오기 완료되면 로딩 글씨 지우기
+    loading_text.empty() 
 
-# 에러 메시지가 있다면 (서버가 막혔다면) 경고창 띄우기
-if error_msg:
-    st.error("🚨 실시간 데이터를 받아오지 못했습니다. (서버 차단 또는 응답 지연)")
-    st.warning("💡 대신 예시(가짜) 데이터를 띄웠습니다! 앱의 지도 기능이 어떻게 작동하는지 테스트해 보세요.")
-    st.info(f"참고용 에러 메시지: {error_msg}")
+    # 에러 메시지가 있다면 (서버가 막혔다면) 경고창 띄우기
+    if error_msg:
+        st.error("🚨 실시간 데이터를 받아오지 못했습니다.")
+        st.warning("💡 대신 예시(가짜) 데이터를 띄웠습니다! 기능이 어떻게 작동하는지 테스트해 보세요.")
+        # 너무 긴 에러 메시지는 깔끔한 화면을 위해 숨겨두었어!
 
-if not flight_data.empty:
-    if not error_msg:
-        st.success(f"성공! 현재 {len(flight_data)}대의 실시간 비행기가 날고 있어요.")
-    
-    layer = pdk.Layer(
-        "ScatterplotLayer",
-        data=flight_data,
-        get_position="[longitude, latitude]",
-        get_radius=10000, # 가짜 데이터가 잘 보이게 크기를 키웠어!
-        get_fill_color="[255, 75, 75]",
-        pickable=True,
-    )
-    
-    view_state = pdk.ViewState(
-        latitude=36.0, longitude=128.0, zoom=5.5, pitch=45
-    )
-    
-    tooltip = {
-        "html": "<b>비행기 이름:</b> {callsign} <br/> <b>고도:</b> {baro_altitude} m <br/> <b>출발 국가:</b> {origin_country}",
-        "style": {"backgroundColor": "steelblue", "color": "white", "font-family": "sans-serif"}
-    }
-    
-    r = pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip)
-    st.pydeck_chart(r)
-    
-    st.subheader("📋 상세 비행기 데이터")
-    st.dataframe(flight_data)
-    
-    if auto_refresh:
-        time.sleep(15)
-        st.cache_data.clear()
-        st.rerun()
-    
-else:
-    st.error("데이터를 가져오지 못했습니다.")
-    if auto_refresh:
-        time.sleep(5)
-        st.cache_data.clear()
-        st.rerun()
-    
-st.write("---")
-if st.button("🔄 실시간 데이터 새로고침", key="refresh_bottom"):
-    st.cache_data.clear()
-    st.rerun()
+    if not flight_data.empty:
+        if not error_msg:
+            st.success(f"성공! 현재 {len(flight_data)}대의 실시간 비행기가 날고 있어요.")
+        
+        layer = pdk.Layer(
+            "ScatterplotLayer",
+            data=flight_data,
+            get_position="[longitude, latitude]",
+            get_radius=10000, 
+            get_fill_color="[255, 75, 75]",
+            pickable=True,
+        )
+        
+        view_state = pdk.ViewState(
+            latitude=36.0, longitude=128.0, zoom=5.5, pitch=45
+        )
+        
+        tooltip = {
+            "html": "<b>비행기 이름:</b> {callsign} <br/> <b>고도:</b> {baro_altitude} m <br/> <b>출발 국가:</b> {origin_country}",
+            "style": {"backgroundColor": "steelblue", "color": "white", "font-family": "sans-serif"}
+        }
+        
+        r = pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip)
+        st.pydeck_chart(r)
+        
+        # 수동 새로고침 버튼을 지도 바로 아래에 배치 (이 버튼을 눌러도 깜빡이지 않아!)
+        if st.button("🔄 실시간 데이터 새로고침", key="refresh_btn"):
+            st.cache_data.clear()
+            st.rerun()
+
+        st.subheader("📋 상세 비행기 데이터")
+        st.dataframe(flight_data)
+        
+        # Fragment 내부의 rerun은 웹페이지 전체를 깜빡이게 하지 않고 이 구역만 새로고침 해줘!
+        if is_auto:
+            time.sleep(15)
+            st.cache_data.clear()
+            st.rerun()
+        
+    else:
+        st.error("데이터를 가져오지 못했습니다.")
+        if st.button("🔄 다시 시도", key="retry_btn"):
+            st.cache_data.clear()
+            st.rerun()
+        if is_auto:
+            time.sleep(5)
+            st.cache_data.clear()
+            st.rerun()
+
+# 위에서 만든 뼈대(Fragment)를 화면에 실행!
+radar_screen(auto_refresh)
