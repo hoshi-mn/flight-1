@@ -9,7 +9,6 @@ st.set_page_config(page_title="실시간 비행기 레이더", page_icon="✈️
 st.title("✈️ 한반도 실시간 비행기 레이더")
 st.write("현재 한반도 상공을 날아다니는 비행기들을 실시간으로 보여줍니다.")
 
-@st.cache_data(ttl=3000, show_spinner=False)
 def get_access_token():
     token_url = "https://auth.opensky-network.org/auth/realms/opensky-network/protocol/openid-connect/token"
     
@@ -126,16 +125,12 @@ def radar_screen():
         
         r = pdk.Deck(layers=[layer], initial_view_state=view_state, tooltip=tooltip)
         st.pydeck_chart(r)
-        
-        # 버튼을 누르면 fragment가 알아서 새로고침 되므로 복잡한 명령어(clear) 삭제!
-        st.button("🔄 즉시 새로고침", key="refresh_btn")
 
         st.subheader("📋 상세 비행기 데이터")
         st.dataframe(flight_data)
         
     else:
         st.error("데이터를 가져오지 못했습니다.")
-        st.button("🔄 다시 시도", key="retry_btn")
 
 # 앱 실행!
 radar_screen()
